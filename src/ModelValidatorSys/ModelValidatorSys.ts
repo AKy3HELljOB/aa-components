@@ -23,11 +23,34 @@ export class ModelValidatorSys {
 	protected vValidatorTask:ModelValidatorTaskS;
 
 
+	/** маппинг валидаторов типа */
+	private typeValidators: Record<string, (k: string, v: ModelRulesI) => boolean > = {
+		[ModelRulesT.str] : this.fTypeStr,
+		[ModelRulesT.boolean] : this.fTypeBool,
+		[ModelRulesT.int] : this.fTypeInt,
+		[ModelRulesT.enum] : this.fTypeEnum,
+		[ModelRulesT.text] : this.fTypeText,
+		[ModelRulesT.json] : this.fTypeJson,
+		[ModelRulesT.decimal] : this.fTypeDecimal,
+		[ModelRulesT.arrayNumbers] : this.fTypeArrayNumbers,
+		[ModelRulesT.object] : this.fTypeObject,
+		[ModelRulesT.array] : this.fTypeArray,
+	}
+
+	/** Маппинг логических валидаторов */
+	private logicValidators: Record<string, (k: string, v: ModelRulesI) => boolean > = {
+		more : this.fMore,
+		more_or_equal : this.fMoreOrEqual,
+		less : this.fLess,
+		less_or_equal : this.fLessOrEqual,
+		max_len : this.fMaxLen,
+		min_len : this.fMinLen,
+	}
 	constructor(errorSys: ErrorSys) {
 		this.errorSys = errorSys;
 		this.vValidatorTask = new ModelValidatorTaskS(this);
+		console.log('object');
 	}
-
 	// ================================================================
 
 	/**
@@ -96,105 +119,37 @@ export class ModelValidatorSys {
             }
 
 			// Проверка зависимостей
-			let bDpend = true;
 			if( v.depend ){
 				this.fDepend(k,v);
 			}//if
 
 			//Проверка - обязательного поля
 			if( v.require ){
-				this.fRequire(k,v);
+				this.fRequire(v);
 			}
 
-			// Обработка [string] значений
-			if( bExist && bDpend && v.type == ModelRulesT.str ){
-				this.fTypeStr(k,v);
+			if (bExist) {
+				/** Проверка типа */ 
+				const fTypeValidator = this.typeValidators[v.type];
+				if (fTypeValidator) {
+					fTypeValidator.call(this,k,v);
+				}
+
+				/** Логические проверки */
+				const aLogicKey = Object.keys(this.logicValidators);
+				for (let i = 0; i < aLogicKey.length && this.abValidOK[k]; i++) {
+					const key = aLogicKey[i];
+					if (key in v) {
+						this.logicValidators[key].call(this,k,v);
+					}
+				}
 			}
-
-			// Обработка [boolean] значений
-			if( bExist && bDpend && v.type == ModelRulesT.boolean ){
-				this.fTypeBool(k,v);
-			}
-
-			// Обработка [integer] значений
-			if( bExist && bDpend && v.type == ModelRulesT.int ){
-				this.fTypeInt(k,v);
-			}
-
-			// Обработка [enum] значений
-			if( bExist && bDpend && v.type == ModelRulesT.enum ){
-				this.fTypeEnum(k,v);
-			}
-
-			// Обработка [text] значений
-			if( bExist && bDpend && v.type == ModelRulesT.text ){
-				this.fTypeText(k,v);
-			}
-
-			// Обработка [json] значений
-			if( bExist && bDpend && v.type == ModelRulesT.json ){
-				this.fTypeJson(k,v);
-			}
-
-			// Обработка [decimal] значений
-			if( bExist && bDpend && v.type == ModelRulesT.decimal ){
-				this.fTypeDecimal(k,v);
-			}
-
-            // Обработка [arrayNumbers] значений
-            if (bExist && bDpend && v.type === ModelRulesT.arrayNumbers) {
-				this.fTypeArrayNumbers(k,v);
-			}
-
-			// Обработка [object] значений
-			if( bExist && bDpend && v.type == ModelRulesT.object ){
-				this.fTypeObject(k,v);
-			}
-
-			// Обработка [array] значений
-			if( bExist && bDpend && v.type == ModelRulesT.array ){
-				this.fTypeArray(k,v);
-			}
-
-			// =================================================
-			// Логические проверки
-			// =================================================
-
-			// Обработка [more] значений - Проверка на больше
-			if( bExist && 'more' in v ){
-				this.fMore(k,v);
-			}
-
-			// Обработка [more_or_equal] значений - Проверка на больше или равно
-			if (bExist && 'more_or_equal' in v) {
-				this.fMoreOrEqual(k,v);
-			}
-
-			// Обработка [less] значений - Проверка на меньше
-			if( bExist && 'less' in v ){
-				this.fLess(k,v);
-			}
-
-			// Обработка [less_or_equal] значений - Проверка на меньше или равно
-			if (bExist && 'less_or_equal' in v) {
-				this.fLessOrEqual(k,v);
-			}
-
-			// Обработка [max_len] значений - Проверка на большее
-			if( bExist && 'max_len' in v ){
-				this.fMaxLen(k,v);
-            }
-
-            // Обработка [min_len] значений - Проверка на меньшее
-            if (bExist && 'min_len' in v) {
-				this.fMinLen(k,v);
-            }
 
             // ============================================
             // Если поле обязательно, но указанно неправильно - подставить значение по умолчанию если есть
             // Если requre(true)
             // ============================================
-       
+
             if( v.require && v.require_def && !this.abValidOK[k]){                
 				if( v.def || v.def === 0 || v.def === false || v.def === ''){
                     this.aResult[k] = v.def;
@@ -251,7 +206,7 @@ export class ModelValidatorSys {
 	 * @param kRule
 	 * @param vRule
 	 */
-	private fRequire(kRule:string,vRule:ModelRulesI):boolean{
+	 private fRequire(kRule:string,vRule:ModelRulesI):boolean{
 		let bOk = true;
 
 		if( !this.vValidatorTask.checkExist(this.data[kRule]) ){
