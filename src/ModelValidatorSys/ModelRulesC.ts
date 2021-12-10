@@ -7,10 +7,12 @@ import { ModelTplRuleC } from "./ModelTplRuleC";
  * Конструктор правил валидации
  */
 export class ModelRulesC {
+	private sName: string;
 
 	private aRules: { [key: string]: any };
 
-	constructor() {
+	constructor(sName = '') {
+		this.sName = sName;
 		this.aRules = {};
 	}
 
@@ -19,15 +21,15 @@ export class ModelRulesC {
 	 * @param sColumn 
 	 */
 	public rule(sColumn: string): ModelOneRuleC {
-		return new ModelOneRuleC(sColumn);
+		return new ModelOneRuleC(sColumn, this.sName);
 	}
 
 	/**
 	 * Создать правило из шаблона
 	 * @param sColumn 
 	 */
-	public tpl(sColumn: string, bRequire:boolean = false): ModelTplRuleC {
-		return new ModelTplRuleC(sColumn, bRequire);
+	public tpl(sColumn: string, bRequire = false): ModelTplRuleC {
+		return new ModelTplRuleC(sColumn, bRequire, this.sName);
 	}
 
 	/**

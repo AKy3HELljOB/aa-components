@@ -22,7 +22,6 @@ export class ModelValidatorSys {
 	public errorSys: ErrorSys;
 	protected vValidatorTask:ModelValidatorTaskS;
 
-
 	/** маппинг валидаторов типа */
 	private typeValidators: Record<string, (k: string, v: ModelRulesI) => boolean > = {
 		[ModelRulesT.str] : this.fTypeStr,
@@ -206,16 +205,30 @@ export class ModelValidatorSys {
 	 * @param kRule
 	 * @param vRule
 	 */
-	 private fRequire(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
+	private fRequire(vRule:ModelRulesI):boolean{
+		let bOk = this.vValidatorTask.checkExist(this.data[vRule.key]);
 
-		if( !this.vValidatorTask.checkExist(this.data[kRule]) ){
+		if (!bOk) {
 			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_require', kRule+' - поле обязательно для заполнения');
+			this.abValidOK[vRule.key] = false;
+			const key = vRule.objectName ? `${vRule.objectName}.${vRule.key}` : `valid_${vRule.key}_require`;
+			this.errorSys.error(key , 'Поле обязательно для заполнения');
 		}
 
 		return bOk;
+	}
+
+	/**
+	 * Ошибка для валидатора типа
+	 * @param kRule
+	 * @param vRule
+	 */
+	private fTypeError(vRule: ModelRulesI, sErrorKey: string, sError = '') : void {
+		this.okResult = false;
+		this.abValidOK[vRule.key] = false;
+		const key = vRule.objectName ? `${vRule.objectName}_${vRule.key}` : `valid_${vRule.key}_${sErrorKey}`;
+		const error = vRule.error || `Ошибка в данных ${sError || sErrorKey}: ${this.data[vRule.key]}`
+		this.errorSys.error(key , error);
 	}
 
 	/**
@@ -223,15 +236,11 @@ export class ModelValidatorSys {
 	 * @param kRule
 	 * @param vRule
 	 */
-	private fTypeStr(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidString(kRule, vRule.if) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_str', vRule.error+' Ошибка string = '+this.data[kRule]);
+	private fTypeStr(kRule:string,vRule:ModelRulesI):boolean {
+		let bOk = this.vValidatorTask.fValidString(vRule.key, vRule.if);
+		if (!bOk) {
+			this.fTypeError(vRule, 'str', 'string');
 		}
-
 		return bOk;
 	}
 
@@ -240,15 +249,11 @@ export class ModelValidatorSys {
 	 * @param kRule
 	 * @param vRule
 	 */
-	private fTypeBool(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidBool(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_bool', vRule['error']+' Ошибка boolean = '+this.data[kRule]);
+	private fTypeBool(kRule:string,vRule:ModelRulesI):boolean {
+		let bOk = this.vValidatorTask.fValidBool(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'bool', 'boolean');
 		}
-
 		return bOk;
 	}
 
@@ -257,15 +262,11 @@ export class ModelValidatorSys {
 	 * @param kRule
 	 * @param vRule
 	 */
-	private fTypeInt(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidInt(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_int', vRule['error']+' Ошибка int = '+this.data[kRule]);
+	private fTypeInt(kRule:string,vRule:ModelRulesI):boolean {
+		let bOk = this.vValidatorTask.fValidInt(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'int');
 		}
-
 		return bOk;
 	}
 
@@ -275,14 +276,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeEnum(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidEnum(kRule, <any[]>vRule.if) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_enum', vRule['error']+' Ошибка enum = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidEnum(vRule.key, <any[]>vRule.if);
+		if (!bOk) {
+			this.fTypeError(vRule, 'enum');
 		}
-
 		return bOk;
 	}
 
@@ -292,14 +289,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeText(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidText(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_text', vRule.error+' Ошибка text = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidText(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'text');
 		}
-
 		return bOk;
 	}
 
@@ -309,14 +302,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeJson(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidJson(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_json', vRule['error']+' Ошибка json = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidJson(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'json');
 		}
-
 		return bOk;
 	}
 
@@ -326,14 +315,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeDecimal(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidDecimal(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_decimal', vRule.error+' Ошибка decimal = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidDecimal(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'decimal');
 		}
-
 		return bOk;
 	}
 
@@ -343,14 +328,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeArrayNumbers(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if (!this.vValidatorTask.fValidArrayNumbers(kRule)) {
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_' + kRule + '_arrayNumbers', vRule.error + ' Ошибка arrayNumbers = ' + this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidArrayNumbers(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'arrayNumbers');
 		}
-
 		return bOk;
 	}
 
@@ -360,14 +341,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeObject(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidObject(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_object', vRule.error+' Ошибка object = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidObject(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'object');
 		}
-
 		return bOk;
 	}
 
@@ -377,14 +354,10 @@ export class ModelValidatorSys {
 	 * @param vRule
 	 */
 	private fTypeArray(kRule:string,vRule:ModelRulesI):boolean{
-		let bOk = true;
-
-		if( !this.vValidatorTask.fValidArray(kRule) ){
-			this.okResult = false;
-			this.abValidOK[kRule] = false;
-			this.errorSys.error('valid_'+kRule+'_array', vRule.error+' Ошибка array = '+this.data[kRule]);
+		let bOk = this.vValidatorTask.fValidArray(vRule.key);
+		if (!bOk) {
+			this.fTypeError(vRule, 'array');
 		}
-
 		return bOk;
 	}
 

@@ -9,10 +9,11 @@ export class ModelOneRuleC {
 
 	private aRule:ModelRulesI;
 
-	constructor(sColumn: string) {
+	constructor(sColumn: string, sName = '') {
 
 		this.aRule = {};
 		this.aRule.key = sColumn;
+		this.aRule.objectName = sName;
 	}
 
 	// ===================================================

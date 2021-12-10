@@ -1,6 +1,8 @@
 
 /** Типы валидации */
 export interface ModelRulesI {
+	objectName?:string; // Название
+
 	key?:string; // ключ проверяемого поля
 	type?:string; // Проверяемый тип
 	def?:any; // Значение по умолчанию
